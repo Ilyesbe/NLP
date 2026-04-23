@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+documents/
+next_word_probabilities.json
+optimized_model.json
+static/

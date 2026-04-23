@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLP Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-dim: #64748b;
+            --primary: #3b82f6;
+            --primary-light: #eff6ff;
+            --primary-dark: #2563eb;
+            --radius: 10px;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            padding: 32px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 28px;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        header p {
+            color: var(--text-dim);
+            font-size: 0.875rem;
+            margin-top: 4px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 28px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab-btn {
+            padding: 10px 18px;
+            border: none;
+            background: none;
+            color: var(--text-dim);
+            font: inherit;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .tab-btn:hover { color: var(--text); }
+
+        .tab-btn.active {
+            color: var(--primary-dark);
+            border-bottom-color: var(--primary-dark);
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+        }
+
+        /* Stat grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 16px;
+        }
+
+        .stat-item .value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text);
+        }
+
+        .stat-item .label {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        /* Pipeline */
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .step:last-child { border-bottom: none; }
+
+        .step-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-content { flex: 1; }
+        .step-name { font-weight: 600; font-size: 0.9rem; }
+        .step-detail { font-size: 0.82rem; color: var(--text-dim); margin-top: 2px; }
+
+        .step-pct {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--primary);
+            background: var(--primary-light);
+            padding: 3px 10px;
+            border-radius: 20px;
+            white-space: nowrap;
+            align-self: center;
+        }
+
+        /* Chart */
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+            height: 400px;
+        }
+
+        /* Inputs */
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font: inherit;
+            font-size: 1rem;
+            color: var(--text);
+            background: var(--bg);
+            transition: border-color 0.2s;
+            direction: rtl;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .input-field::placeholder { color: #94a3b8; }
+
+        .select-field {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font: inherit;
+            font-size: 0.85rem;
+            color: var(--text);
+            background: var(--card);
+            cursor: pointer;
+        }
+
+        /* Prediction results */
+        .pred-meta {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .pred-meta strong { color: var(--text); }
+
+        .pred-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pred-row:last-child { border-bottom: none; }
+
+        .pred-rank {
+            width: 24px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .pred-word {
+            font-weight: 600;
+            font-size: 1rem;
+            direction: rtl;
+            min-width: 80px;
+        }
+
+        .pred-bar-wrap {
+            flex: 1;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .pred-bar {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+
+        .pred-pct {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            min-width: 52px;
+            text-align: right;
+        }
+
+        .suggestion {
+            display: inline-block;
+            padding: 5px 12px;
+            margin: 3px;
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            direction: rtl;
+            transition: background 0.2s;
+        }
+
+        .suggestion:hover { background: #dbeafe; }
+
+        .not-found { color: #ef4444; font-size: 0.9rem; }
+
+        /* Vocab search results */
+        .vocab-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .vocab-row:hover { background: var(--primary-light); margin: 0 -24px; padding: 10px 24px; }
+
+        .vocab-word { font-weight: 600; direction: rtl; }
+
+        .vocab-tags {
+            display: flex;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+        }
+
+        /* Autoencoder info */
+        .ae-info {
+            background: var(--primary-light);
+            border-radius: 8px;
+            padding: 14px 18px;
+            font-size: 0.85rem;
+            color: var(--primary-dark);
+            margin-bottom: 20px;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 48px 0;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .stat-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-item .value { font-size: 1.4rem; }
+            .card { padding: 16px; }
+            header h1 { font-size: 1.25rem; }
+            .pred-word { min-width: 60px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>NLP Dashboard</h1>
+        <p>Analyse du corpus arabe &mdash; Statistiques, visualisations et modele de langage</p>
+    </header>
+
+    <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="stats">Statistiques</button>
+        <button class="tab-btn" data-tab="words">Mots</button>
+        <button class="tab-btn" data-tab="heatmap">Heatmap</button>
+        <button class="tab-btn" data-tab="sentences">Phrases</button>
+        <button class="tab-btn" data-tab="predict">Probabilite</button>
+        <button class="tab-btn" data-tab="autoencoder">Autoencoder</button>
+    </div>
+
+    <!-- STATISTICS -->
+    <div class="tab-panel active" id="panel-stats">
+        <div class="stat-grid" id="stat-cards">
+            <div class="loading">Chargement...</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Pipeline NLP</div>
+            <div id="pipeline-steps"></div>
+        </div>
+    </div>
+
+    <!-- WORD FREQUENCY -->
+    <div class="tab-panel" id="panel-words">
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <div class="card-title" style="margin-bottom:0;">Frequence des mots</div>
+                <select id="wordCount" class="select-field">
+                    <option value="15">Top 15</option>
+                    <option value="25" selected>Top 25</option>
+                    <option value="40">Top 40</option>
+                </select>
+            </div>
+            <div class="chart-wrap"><canvas id="wordChart"></canvas></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Recherche vocabulaire</div>
+            <input type="text" id="vocabSearch" class="input-field" placeholder="...بحث في المفردات" style="margin-bottom:12px;">
+            <div id="vocabResults"></div>
+        </div>
+    </div>
+
+    <!-- HEATMAP -->
+    <div class="tab-panel" id="panel-heatmap">
+        <div class="card">
+            <div class="card-title">Co-occurrence des caracteres arabes</div>
+            <div id="heatmapPlot" style="width:100%;height:520px;"></div>
+        </div>
+    </div>
+
+    <!-- SENTENCE LENGTH -->
+    <div class="tab-panel" id="panel-sentences">
+        <div class="stat-grid" id="sentence-stats"></div>
+        <div class="card">
+            <div class="card-title">Distribution des longueurs</div>
+            <div class="chart-wrap"><canvas id="sentenceChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- PROBABILITY -->
+    <div class="tab-panel" id="panel-predict">
+        <div class="card">
+            <div class="card-title">Prediction du mot suivant</div>
+            <p style="font-size:0.875rem;color:var(--text-dim);margin-bottom:14px;">
+                Entrez un mot arabe pour voir les probabilites du modele bigramme.
+            </p>
+            <input type="text" id="predictInput" class="input-field" placeholder="...اكتب كلمة عربية هنا" style="margin-bottom:16px;">
+            <div id="predictResults"></div>
+        </div>
+    </div>
+
+    <!-- AUTOENCODER -->
+    <div class="tab-panel" id="panel-autoencoder">
+        <div class="card">
+            <div class="card-title">Autoencoder &mdash; Espace latent 2D</div>
+            <div id="ae-info"></div>
+            <div id="autoencoderPlot" style="width:100%;height:480px;"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Courbe de perte (Loss)</div>
+            <div class="chart-wrap" style="height:280px;"><canvas id="lossChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// =========================================
+// TAB SWITCHING
+// =========================================
+const tabBtns = document.querySelectorAll('.tab-btn');
+const panels = document.querySelectorAll('.tab-panel');
+
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        panels.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+        lazyLoad(btn.dataset.tab);
+    });
+});
+
+const loaded = { stats: false, words: false, heatmap: false, sentences: false, autoencoder: false };
+
+function lazyLoad(tab) {
+    if (loaded[tab]) return;
+    loaded[tab] = true;
+    if (tab === 'heatmap') loadHeatmap();
+    if (tab === 'sentences') loadSentences();
+    if (tab === 'autoencoder') loadAutoencoder();
+}
+
+// =========================================
+// CHART DEFAULTS
+// =========================================
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#e2e8f0';
+
+// =========================================
+// STATISTICS
+// =========================================
+fetch('/api/stats').then(r => r.json()).then(data => {
+    const s = data.stats;
+    const cards = [
+        { label: 'Documents', value: s.total_documents.toLocaleString() },
+        { label: 'Caracteres', value: s.total_characters.toLocaleString() },
+        { label: 'Mots totaux', value: s.total_words.toLocaleString() },
+        { label: 'Vocabulaire', value: s.unique_words.toLocaleString() },
+        { label: 'Phrases', value: s.total_sentences.toLocaleString() },
+        { label: 'Caracteres arabes', value: s.unique_arabic_chars },
+    ];
+
+    document.getElementById('stat-cards').innerHTML = cards.map(c =>
+        `<div class="stat-item"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`
+    ).join('');
+
+    document.getElementById('pipeline-steps').innerHTML = data.pipeline_steps.map((p, i) =>
+        `<div class="step">
+            <div class="step-num">${i + 1}</div>
+            <div class="step-content">
+                <div class="step-name">${p.step}</div>
+                <div class="step-detail">${p.detail}</div>
+            </div>
+            <span class="step-pct">${p.pct}%</span>
+        </div>`
+    ).join('');
+});
+
+// =========================================
+// WORD FREQUENCY
+// =========================================
+let wordChart = null;
+
+function loadWordChart(n) {
+    fetch('/api/word_freq?n=' + n).then(r => r.json()).then(data => {
+        if (wordChart) wordChart.destroy();
+        wordChart = new Chart(document.getElementById('wordChart'), {
+            type: 'bar',
+            data: {
+                labels: data.words,
+                datasets: [{
+                    data: data.counts,
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 4,
+                    maxBarThickness: 32,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.raw.toLocaleString() + ' (' + (ctx.raw / data.total * 100).toFixed(2) + '%)'
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { font: { size: 12 }, maxRotation: 55 }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString() } }
+                }
+            }
+        });
+    });
+}
+
+loadWordChart(25);
+document.getElementById('wordCount').addEventListener('change', e => loadWordChart(e.target.value));
+
+// Vocab search
+let searchTimer;
+document.getElementById('vocabSearch').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    const q = e.target.value.trim();
+    if (!q) { document.getElementById('vocabResults').innerHTML = ''; return; }
+
+    searchTimer = setTimeout(() => {
+        fetch('/api/vocab_search?q=' + encodeURIComponent(q)).then(r => r.json()).then(data => {
+            if (!data.results.length) {
+                document.getElementById('vocabResults').innerHTML = '<p style="color:var(--text-dim);font-size:0.9rem;">Aucun resultat</p>';
+                return;
+            }
+            document.getElementById('vocabResults').innerHTML = data.results.map(r =>
+                `<div class="vocab-row" data-word="${r.word}">
+                    <span class="vocab-word">${r.word}</span>
+                    <div class="vocab-tags">
+                        <span>Freq: ${r.frequency.toLocaleString()}</span>
+                        <span>Trans: ${r.transitions}</span>
+                    </div>
+                </div>`
+            ).join('');
+
+            document.querySelectorAll('.vocab-row').forEach(row => {
+                row.addEventListener('click', () => {
+                    document.getElementById('predictInput').value = row.dataset.word;
+                    document.getElementById('predictInput').dispatchEvent(new Event('input'));
+                    document.querySelector('[data-tab="predict"]').click();
+                });
+            });
+        });
+    }, 300);
+});
+
+// =========================================
+// HEATMAP
+// =========================================
+function loadHeatmap() {
+    fetch('/api/char_heatmap').then(r => r.json()).then(data => {
+        Plotly.newPlot('heatmapPlot', [{
+            z: data.matrix_raw,
+            x: data.chars,
+            y: data.chars,
+            type: 'heatmap',
+            colorscale: 'Blues',
+            hoverongaps: false,
+            hovertemplate: '%{y} &rarr; %{x}<br>%{z}<extra></extra>',
+        }], {
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { family: 'Inter, system-ui', color: '#1e293b', size: 13 },
+            margin: { l: 50, r: 20, t: 20, b: 50 },
+            yaxis: { autorange: 'reversed' },
+        }, { responsive: true });
+    });
+}
+
+// =========================================
+// SENTENCES
+// =========================================
+function loadSentences() {
+    fetch('/api/sentence_length').then(r => r.json()).then(data => {
+        const items = [
+            { label: 'Total phrases', value: data.stats.total_phrases?.toLocaleString() || '0' },
+            { label: 'Longueur moyenne', value: data.stats.moyenne },
+            { label: 'Maximum', value: data.stats.max },
+            { label: 'Minimum', value: data.stats.min },
+        ];
+        document.getElementById('sentence-stats').innerHTML = items.map(c =>
+            `<div class="stat-item"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`
+        ).join('');
+
+        new Chart(document.getElementById('sentenceChart'), {
+            type: 'bar',
+            data: {
+                labels: data.bins,
+                datasets: [{
+                    data: data.counts,
+                    backgroundColor: '#93c5fd',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: ctx => ctx[0].label + ' mots',
+                            label: ctx => ctx.raw.toLocaleString() + ' phrases'
+                        }
+                    }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Longueur (mots)' }, grid: { display: false } },
+                    y: { beginAtZero: true, title: { display: true, text: 'Nombre de phrases' } }
+                }
+            }
+        });
+    });
+}
+
+// =========================================
+// PROBABILITY PREDICTION
+// =========================================
+let predictTimer;
+document.getElementById('predictInput').addEventListener('input', e => {
+    clearTimeout(predictTimer);
+    const word = e.target.value.trim();
+    const el = document.getElementById('predictResults');
+    if (!word) { el.innerHTML = ''; return; }
+
+    predictTimer = setTimeout(() => {
+        fetch('/api/predict?word=' + encodeURIComponent(word)).then(r => r.json()).then(data => {
+            if (!data.found) {
+                let html = '<p class="not-found">Mot non trouve dans le modele.</p>';
+                if (data.suggestions.length) {
+                    html += '<p style="font-size:0.85rem;color:var(--text-dim);margin:8px 0 4px;">Suggestions :</p>';
+                    html += data.suggestions.map(s =>
+                        `<span class="suggestion" data-word="${s}">${s}</span>`
+                    ).join('');
+                }
+                el.innerHTML = html;
+
+                el.querySelectorAll('.suggestion').forEach(sg => {
+                    sg.addEventListener('click', () => {
+                        document.getElementById('predictInput').value = sg.dataset.word;
+                        document.getElementById('predictInput').dispatchEvent(new Event('input'));
+                    });
+                });
+                return;
+            }
+
+            const maxP = data.predictions[0]?.probability || 1;
+            let html = `<div class="pred-meta">
+                <span>Mot : <strong>${data.word}</strong></span>
+                <span>Transitions : <strong>${data.total_transitions}</strong></span>
+            </div>`;
+
+            html += data.predictions.map((p, i) =>
+                `<div class="pred-row">
+                    <span class="pred-rank">${i + 1}</span>
+                    <span class="pred-word">${p.word}</span>
+                    <div class="pred-bar-wrap"><div class="pred-bar" style="width:${(p.probability / maxP * 100)}%"></div></div>
+                    <span class="pred-pct">${p.probability}%</span>
+                </div>`
+            ).join('');
+
+            el.innerHTML = html;
+        });
+    }, 300);
+});
+
+// =========================================
+// AUTOENCODER
+// =========================================
+function loadAutoencoder() {
+    fetch('/api/autoencoder').then(r => r.json()).then(data => {
+        if (!data.available) {
+            document.getElementById('ae-info').innerHTML = '<p style="color:var(--text-dim);">Donnees non disponibles.</p>';
+            return;
+        }
+
+        document.getElementById('ae-info').innerHTML =
+            `<div class="ae-info">${data.words.length} mots &middot; ${data.words.length}D &rarr; 2D &middot; MSE finale : ${data.final_loss} &middot; 300 epoques</div>`;
+
+        Plotly.newPlot('autoencoderPlot', [{
+            x: data.coords.map(c => c[0]),
+            y: data.coords.map(c => c[1]),
+            mode: 'markers+text',
+            type: 'scatter',
+            text: data.words,
+            textposition: 'top center',
+            textfont: { size: 10, family: 'Inter, system-ui', color: '#1e293b' },
+            marker: {
+                size: 8,
+                color: data.coords.map((_, i) => i),
+                colorscale: 'Blues',
+                line: { width: 1, color: '#e2e8f0' }
+            },
+            hovertemplate: '%{text}<br>x: %{x:.3f}<br>y: %{y:.3f}<extra></extra>',
+        }], {
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: '#f8fafc',
+            font: { family: 'Inter, system-ui', color: '#1e293b' },
+            margin: { l: 50, r: 20, t: 20, b: 50 },
+            xaxis: { title: 'Dimension 1', gridcolor: '#e2e8f0', zerolinecolor: '#cbd5e1' },
+            yaxis: { title: 'Dimension 2', gridcolor: '#e2e8f0', zerolinecolor: '#cbd5e1' },
+        }, { responsive: true });
+
+        new Chart(document.getElementById('lossChart'), {
+            type: 'line',
+            data: {
+                labels: data.losses.map((_, i) => i + 1),
+                datasets: [{
+                    data: data.losses,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.06)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: ctx => 'Epoque ' + ctx[0].label,
+                            label: ctx => 'Loss: ' + ctx.raw.toFixed(6)
+                        }
+                    }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Epoques' }, ticks: { maxTicksLimit: 12 }, grid: { display: false } },
+                    y: { title: { display: true, text: 'MSE Loss' } }
+                }
+            }
+        });
+    });
+}
+</script>
+
+</body>
+</html>
