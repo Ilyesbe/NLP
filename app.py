@@ -36,6 +36,10 @@ def normalize(text):
     return text
 
 
+def is_arabic(token):
+    return any('؀' <= ch <= 'ۿ' for ch in token)
+
+
 def load_matrix_csv(filepath):
     if not os.path.exists(filepath):
         return None, None
@@ -68,7 +72,7 @@ def compute_statistics(articles):
     all_tokens = []
     sentences_all = []
     for a in normalized:
-        tokens = a.split()
+        tokens = [t for t in a.split() if is_arabic(t)]
         all_tokens.extend(tokens)
         sents = re.split(r'[.!?؟،\n]+', a)
         sents = [s.strip() for s in sents if s.strip()]
