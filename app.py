@@ -316,7 +316,7 @@ def api_predict():
         suggestions = [w for w in prob_model if w.startswith(word)][:10] if word else []
         return jsonify({"found": False, "suggestions": suggestions, "predictions": []})
 
-    next_words = prob_model[word]
+    next_words = {w: p for w, p in prob_model[word].items() if w and is_arabic(w)}
     sorted_preds = sorted(next_words.items(), key=lambda x: -x[1])[:15]
 
     return jsonify({
